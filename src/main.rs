@@ -1,26 +1,26 @@
 use std::collections::HashMap;
-//use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
+use std::{fs, io};
+use std::path::{Path, PathBuf};
+use sha2::{Sha256, Digest};
+
 
 fn main() {
     // Répertoire de référence en dur (à lire sur la ligne de commande)
     let rep_reference = std::path::Path::new("C:\\Users\\frag\\seadrive_root\\Emmanuel\\Mes bibliothèques\\Photos\\_Animaux");
-    //println!("Répertoire de référence : {rep_reference}");
 
-    let hashes: HashMap<&Path, String> = HashMap::new();
+    // Calcul des hashs du répértoire de référence
+    let mut hashes: HashMap<String, PathBuf> = HashMap::new();
+    analyse_repertoire(&rep_reference, &mut hashes);
 
-    analyse_repertoire(&rep_reference, &hashes);
-
-//    let mut file_hashes: HashMap<String, String> = HashMap::new();
-//    for (hash, file) in &file_hashes {
-//        println!("{hash} -> {file}");
-//    }
-//    println!("{} element(s).", file_hashes.len());
+    // Affichage
+    for (hash, file) in &hashes {
+        println!("{} : {}", file.to_string_lossy(), hash);
+    }
+    println!("{} element(s).", hashes.len());
 
 }
 
-fn analyse_repertoire( repertoire: &Path, hashes: &HashMap<&Path, String> ) {
+fn analyse_repertoire( repertoire: &Path, hashes: &mut HashMap<String, PathBuf> ) {
     // Itére le contenu du répertoire
     if let Ok(dir_entries) = fs::read_dir(repertoire) {
         for dir_entry in dir_entries {
@@ -30,8 +30,16 @@ fn analyse_repertoire( repertoire: &Path, hashes: &HashMap<&Path, String> ) {
                         // Parcours récursif
                         analyse_repertoire(dir_entry.path().as_path(), hashes);
                     } else {
-                        // Ajout dans la HashMap
-                        println!("Fichier : {}",dir_entry.path().display())  ;
+                        // Calcul du hash
+                        let mut hasher = Sha256::new();
+                        if let Ok(mut file) = fs::File::open(dir_entry.path()) {
+                            let _bytes_written = io::copy(&mut file, &mut hasher);
+                            let hash_bytes = hasher.finalize();
+
+                                
+                            // Ajout dans la HashMap
+                            hashes.insert( String::from(format!("{:X}", hash_bytes)), dir_entry.path() );
+                        }
                     }
                 }
             }
