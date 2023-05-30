@@ -1,0 +1,4 @@
+# dedup
+
+Exercice pour  débuter en Rust.  
+`dedup` est un utilitaire qui parcourt les arborescences de fichiers reçues en ligne de commande et affiche les doublons détectés.
