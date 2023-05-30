@@ -1,26 +1,9 @@
 use std::collections::HashMap;
-use std::{fs, io};
+use std::{fs, io, env};
 use std::path::{Path, PathBuf};
 use sha2::{Sha256, Digest};
 
-
-fn main() {
-    // Répertoire de référence en dur (à lire sur la ligne de commande)
-    let rep_reference = std::path::Path::new("C:\\Users\\frag\\seadrive_root\\Emmanuel\\Mes bibliothèques\\Photos\\_Animaux");
-
-    // Calcul des hashs du répértoire de référence
-    let mut hashes: HashMap<String, PathBuf> = HashMap::new();
-    analyse_repertoire(&rep_reference, &mut hashes);
-
-    // Affichage
-    for (hash, file) in &hashes {
-        println!("{} : {}", file.to_string_lossy(), hash);
-    }
-    println!("{} element(s).", hashes.len());
-
-}
-
-fn analyse_repertoire( repertoire: &Path, hashes: &mut HashMap<String, PathBuf> ) {
+fn analyse_repertoire( repertoire: &Path, hashes: &mut HashMap<String, Vec<PathBuf>> ) {
     // Itére le contenu du répertoire
     if let Ok(dir_entries) = fs::read_dir(repertoire) {
         for dir_entry in dir_entries {
@@ -35,10 +18,15 @@ fn analyse_repertoire( repertoire: &Path, hashes: &mut HashMap<String, PathBuf> 
                         if let Ok(mut file) = fs::File::open(dir_entry.path()) {
                             let _bytes_written = io::copy(&mut file, &mut hasher);
                             let hash_bytes = hasher.finalize();
-
+                            let hash_str = String::from(format!("{:X}", hash_bytes));
                                 
                             // Ajout dans la HashMap
-                            hashes.insert( String::from(format!("{:X}", hash_bytes)), dir_entry.path() );
+                            if let Some(v) = hashes.get_mut(&hash_str) {
+                                v.push(dir_entry.path());
+                            } else {
+                                let v = vec![ dir_entry.path() ];
+                                hashes.insert(hash_str, v);
+                            }
                         }
                     }
                 }
@@ -46,3 +34,28 @@ fn analyse_repertoire( repertoire: &Path, hashes: &mut HashMap<String, PathBuf> 
         }
     }
 }
+
+fn affiche_dups( hashes: &HashMap<String, Vec<PathBuf>> ) {
+    for ( hash_val, dups ) in hashes {
+        if dups.len()>1 {
+            println!("{} duplicas (hash = {}) :", dups.len(), hash_val);
+            for dup_path in dups {
+                println!("{}", dup_path.to_string_lossy());
+            }
+            println!("");
+        }
+    }
+}
+
+fn main() {
+    let mut dup_detector: HashMap<String, Vec<PathBuf>> = HashMap::new();
+
+    let args: Vec<String> = env::args().collect();
+    for rep in args {
+        let rep_path = Path::new(&rep);
+        analyse_repertoire(&rep_path, &mut dup_detector);
+    }
+
+    affiche_dups(&dup_detector);
+}
+
